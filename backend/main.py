@@ -33,10 +33,10 @@ async def lifespan(app: FastAPI):
     
     print("Starting Smart City RL Navigation API...")
     
-    # Initialize environment
+    # Initializing environment
     env = NavigationEnvironment(grid_size=15, dynamic_traffic=True)
     
-    # Load trained agent
+    # Loading trained agent
     model_path = "models/dqn_best.pth"
     if os.path.exists(model_path):
         try:
@@ -118,19 +118,19 @@ async def reset_environment(config: EnvironmentConfig):
     global env, current_state, current_episode_path
     
     try:
-        # Reinitialize environment if grid size changed
+        # Reinitializing environment if grid size changed
         if config.grid_size != env.grid_size:
             env = NavigationEnvironment(
                 grid_size=config.grid_size,
                 dynamic_traffic=config.dynamic_traffic
             )
         
-        # Reset environment
+        # Reseingt environment
         state, info = env.reset()
         current_state = state
         current_episode_path = [env.agent_pos.tolist()]
         
-        # Get grid state for visualization
+        # Getting grid state for visualization
         grid_state = env.get_grid_state()
         
         return {
@@ -193,7 +193,7 @@ async def navigate_with_rl(nav_req: NavigationRequest):
         )
     
     try:
-        # Reinitialize environment if needed
+        # Reinitializing environment if needed
         if nav_req.grid_size != env.grid_size:
             env = NavigationEnvironment(
                 grid_size=nav_req.grid_size,
@@ -223,7 +223,7 @@ async def navigate_with_rl(nav_req: NavigationRequest):
         trajectory = []
         
         while not done and steps < max_steps:
-            # Select action using trained agent
+            # Selecting action using trained agent
             action = agent.select_action(state, training=False)
             
             # Take step
@@ -318,24 +318,24 @@ async def websocket_live_navigation(websocket: WebSocket):
         return
     
     try:
-        # Receive configuration
+        # Receiving configuration
         config = await websocket.receive_json()
         grid_size = config.get("grid_size", 15)
         
-        # Reset environment
+        # Reseting environment
         if grid_size != env.grid_size:
             env = NavigationEnvironment(grid_size=grid_size, dynamic_traffic=True)
         
         state, info = env.reset()
         
-        # Send initial state
+        # Sending initial state
         await websocket.send_json({
             "type": "init",
             "grid_state": env.get_grid_state(),
             "info": info
         })
         
-        # Run episode with live updates
+        # Running episode with live updates
         done = False
         steps = 0
         max_steps = 200
@@ -399,7 +399,6 @@ if __name__ == "__main__":
     import uvicorn
     
     print("Starting FastAPI server...")
-    print("API Documentation: http://127.0.0.1:8000/docs")
     
     uvicorn.run(
         "main:app",
