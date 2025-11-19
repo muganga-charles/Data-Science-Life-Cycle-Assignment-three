@@ -1,0 +1,115 @@
+@import 'tailwindcss';
+
+@theme inline {
+  /* Enhanced dark theme with professional slate colors matching the new design */
+  --color-background: 15 23 42;
+  --color-foreground: 226 232 240;
+  
+  --color-card: 30 41 59;
+  --color-card-foreground: 241 245 249;
+  
+  --color-primary: 59 130 246;
+  --color-primary-foreground: 255 255 255;
+  
+  --color-secondary: 71 85 105;
+  --color-secondary-foreground: 241 245 249;
+  
+  --color-accent: 16 185 129;
+  --color-accent-foreground: 255 255 255;
+  
+  --color-muted: 51 65 85;
+  --color-muted-foreground: 148 163 184;
+  
+  --color-border: 51 65 85;
+  --color-input: 30 41 59;
+  --color-ring: 59 130 246;
+  
+  --color-success: 16 185 129;
+  --color-warning: 234 179 8;
+  --color-error: 239 68 68;
+  
+  --radius: 0.75rem;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: rgb(15 23 42);
+  color: rgb(226 232 240);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Enhanced button hover effects with smooth transitions */
+button:not(:disabled):hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+button:not(:disabled):active {
+  transform: translateY(0);
+  transition: all 0.1s ease;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Smooth grid cell animations with glow effect */
+.grid-cell {
+  transition: all 0.2s ease;
+}
+
+.grid-cell:hover {
+  transform: scale(1.05);
+  z-index: 10;
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(30 41 59);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(71 85 105);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(100 116 139);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .grid-container {
+    overflow-x: auto;
+  }
+}
+
+/* Improved focus states for accessibility */
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid rgb(59 130 246);
+  outline-offset: 2px;
+}
