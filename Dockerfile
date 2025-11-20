@@ -12,8 +12,4 @@ COPY backend .
 
 EXPOSE 8000
 
-CMD ["/app/venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-
-# Docker commands
-#  sudo docker build -t data-science-life-cycle .
-#  sudo docker run -p 8000:8000 data-science-life-cycle 
+CMD ["/app/venv/bin/python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
