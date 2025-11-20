@@ -7,6 +7,7 @@ import numpy as np
 import random
 from typing import Tuple, Dict, List, Optional
 from enum import IntEnum
+from collections import deque
 
 
 class CellType(IntEnum):
@@ -64,35 +65,74 @@ class NavigationEnvironment:
         self.time_step = 0
         self.rush_hour_start = 50
         self.rush_hour_end = 100
+    
+    def _has_valid_path(self, start, goal):
+        from collections import deque
+
+        queue = deque([tuple(start)])
+        visited = set([tuple(start)])
+        gx, gy = goal
+
+        while queue:
+            x, y = queue.popleft()
+            if (x, y) == (gx, gy):
+                return True
+
+            for dx, dy in [(1,0), (-1,0), (0,1), (0,-1)]:
+                nx, ny = x + dx, y + dy
+
+                # Inside grid and not obstacle
+                if 0 <= nx < self.grid_size and 0 <= ny < self.grid_size:
+                    if self.city_grid[nx, ny] != 9 and (nx, ny) not in visited:
+                        visited.add((nx, ny))
+                        queue.append((nx, ny))
+
+        return False
+
+
         
     def reset(self, seed: Optional[int] = None) -> Tuple[np.ndarray, Dict]:
-        """Reset the environment to initial state"""
+        """Reset the environment to initial state and guarantee reachable path"""
         if seed is not None:
             np.random.seed(seed)
             random.seed(seed)
-        
+
         self.episode += 1
         self.steps_taken = 0
         self.time_step = 0
-        
-        # Generate city layout
+
         self._generate_city_layout()
-        
-        # Initialize traffic
         self._initialize_traffic()
-        
-        # Set random start and goal positions
+
         self.agent_pos = self._get_random_valid_position()
         self.goal_pos = self._get_random_valid_position()
-        
-        # Ensure start and goal are different
+
         while np.array_equal(self.agent_pos, self.goal_pos):
             self.goal_pos = self._get_random_valid_position()
-        
+
+        attempts = 0
+        while not self._has_valid_path(self.agent_pos, self.goal_pos):
+            attempts += 1
+
+            self.agent_pos = self._get_random_valid_position()
+            self.goal_pos = self._get_random_valid_position()
+
+            # Ensure start != goal
+            while np.array_equal(self.agent_pos, self.goal_pos):
+                self.goal_pos = self._get_random_valid_position()
+
+            # If too many failed attempts → regenerate whole map
+            if attempts > 40:
+                self._generate_city_layout()
+                self._initialize_traffic()
+                attempts = 0
+
+        # Everything is valid
         state = self._get_state()
         info = self._get_info()
-        
+
         return state, info
+
     
     def step(self, action: int) -> Tuple[np.ndarray, float, bool, bool, Dict]:
         """
@@ -230,7 +270,7 @@ class NavigationEnvironment:
         return True
     
     def _get_random_valid_position(self) -> np.ndarray:
-        """Getting a random valid position"""
+        """Get a random valid position"""
         while True:
             x = random.randint(0, self.grid_size - 1)
             y = random.randint(0, self.grid_size - 1)
@@ -275,21 +315,24 @@ class NavigationEnvironment:
         # Road type bonus/penalty - increased highway bonus
         road_type = self.city_grid[x, y]
         if road_type == CellType.HIGHWAY:
-            reward += 1.0 
+            reward += 1.0  # Increased from 0.5
         elif road_type == CellType.RESIDENTIAL:
             reward -= 0.3  # Reduced from 1.0
         
-        # Distance-based reward 
+        # Distance-based reward (MOST IMPORTANT - helps guide the agent)
         old_dist = np.linalg.norm(old_pos - self.goal_pos)
         new_dist = np.linalg.norm(new_pos - self.goal_pos)
         
         distance_improvement = old_dist - new_dist
         
         if distance_improvement > 0:
-            reward += 2.0 * distance_improvement  
+            # Reward for moving closer - scaled by improvement
+            reward += 2.0 * distance_improvement  # Increased from 1.0
         else:
+            # Small penalty for moving away
             reward -= 0.3  # Reduced from 0.5
         
+        # Additional reward for being close to goal (helps final approach)
         if new_dist < 5.0:
             reward += (5.0 - new_dist) * 0.5  # Bonus when very close
         
@@ -318,7 +361,7 @@ class NavigationEnvironment:
         return state
     
     def _get_info(self) -> Dict:
-        """Getting additional information about current state"""
+        """Get additional information about current state"""
         return {
             'agent_pos': self.agent_pos.tolist(),
             'goal_pos': self.goal_pos.tolist(),
@@ -329,7 +372,7 @@ class NavigationEnvironment:
         }
     
     def get_grid_state(self) -> Dict:
-        """Getting complete grid state for visualization"""
+        """Get complete grid state for visualization"""
         return {
             'city_grid': self.city_grid.tolist(),
             'traffic_grid': self.traffic_grid.tolist(),
@@ -345,30 +388,30 @@ class NavigationEnvironment:
             print(f"Agent: {self.agent_pos}, Goal: {self.goal_pos}")
             print(f"Distance to goal: {np.sum(np.abs(self.agent_pos - self.goal_pos))}")
             
-            # Creating visualization grid
+            # Create visualization grid
             vis_grid = np.zeros((self.grid_size, self.grid_size), dtype=str)
             vis_grid[:] = '.'
             
-            # Marking obstacles
+            # Mark obstacles
             vis_grid[self.city_grid == CellType.OBSTACLE] = '#'
             
-            # Marking highways
+            # Mark highways
             vis_grid[self.city_grid == CellType.HIGHWAY] = '='
             
-            # Marking goal
+            # Mark goal
             vis_grid[self.goal_pos[0], self.goal_pos[1]] = 'G'
             
-            # Marking agent
+            # Mark agent
             vis_grid[self.agent_pos[0], self.agent_pos[1]] = 'A'
             
-            # Printing grid
+            # Print grid
             for row in vis_grid:
                 print(' '.join(row))
             print()
 
 
 if __name__ == "__main__":
-    # Testing the environment
+    # Test the environment
     env = NavigationEnvironment(grid_size=10, render_mode="human")
     
     print("Testing Navigation Environment")
@@ -380,7 +423,7 @@ if __name__ == "__main__":
     
     env.render()
     
-    # Running a few random steps
+    # Run a few random steps
     for i in range(5):
         action = random.randint(0, 4)
         state, reward, terminated, truncated, info = env.step(action)

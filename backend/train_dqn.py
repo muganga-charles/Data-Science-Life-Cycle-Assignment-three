@@ -33,11 +33,11 @@ def train_agent(
         model_dir: Directory to save models
         render_frequency: How often to render episodes
     """
-    # Creating directories
+    # Create directories
     os.makedirs(model_dir, exist_ok=True)
     os.makedirs("metrics", exist_ok=True)
     
-    # Initializing environment and agent
+    # Initialize environment and agent
     env = NavigationEnvironment(
         grid_size=grid_size,
         max_steps=max_steps,
@@ -78,27 +78,31 @@ def train_agent(
     
     for episode in tqdm(range(episodes), desc="Training"):
         state, info = env.reset()
+
+        while not env._has_valid_path(env.agent_pos, env.goal_pos):
+            state, info = env.reset()
+
         episode_reward = 0
         episode_length = 0
         done = False
         
         while not done:
-            # Selecting action
+            # Select action
             action = agent.select_action(state, training=True)
             
-            # Taking step
+            # Take step
             next_state, reward, terminated, truncated, info = env.step(action)
             done = terminated or truncated
             
-            # Storing experience
+            # Store experience
             agent.store_experience(state, action, reward, next_state, terminated)
             
-            # Training agent
+            # Train agent
             loss = agent.train_step()
             if loss is not None:
                 agent.losses.append(loss)
             
-            # Updating state and metrics
+            # Update state and metrics
             state = next_state
             episode_reward += reward
             episode_length += 1
@@ -140,7 +144,7 @@ def train_agent(
                 print(f"Avg Loss (last 100): {np.mean(agent.losses[-100:]):.4f}")
             print(f"{'='*60}\n")
         
-        # Updating best model (save only best as ZIP)
+        # Update best model (save only best as ZIP)
         if (episode + 1) % 50 == 0:  # Check every 50 episodes
             avg_reward = np.mean(episode_rewards[-100:]) if len(episode_rewards) >= 100 else np.mean(episode_rewards)
             
@@ -150,15 +154,15 @@ def train_agent(
                 agent.save_model(best_model_path)
                 print(f"✓ New best model saved! Avg Reward: {avg_reward:.2f}\n")
     
-    # Saving final model as ZIP only
+    # Save final model as ZIP only
     final_model_path = os.path.join(model_dir, "dqn_final.zip")
     agent.save_model(final_model_path)
     
-    # Saving metrics
+    # Save metrics
     metrics_path = os.path.join("metrics", f"training_metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
     agent.save_metrics(metrics_path)
     
-    # Plotting training curves
+    # Plot training curves
     plot_training_curves(agent.episode_rewards, agent.episode_lengths, agent.losses)
     
     print(f"\n{'='*60}")
@@ -175,7 +179,7 @@ def plot_training_curves(episode_rewards, episode_lengths, losses):
     """Plot training curves"""
     fig, axes = plt.subplots(2, 2, figsize=(15, 10))
     
-    # Plotting episode rewards
+    # Plot episode rewards
     axes[0, 0].plot(episode_rewards, alpha=0.3, label='Episode Reward')
     if len(episode_rewards) >= 100:
         moving_avg = np.convolve(episode_rewards, np.ones(100)/100, mode='valid')
@@ -187,7 +191,7 @@ def plot_training_curves(episode_rewards, episode_lengths, losses):
     axes[0, 0].legend()
     axes[0, 0].grid(True)
     
-    # Plotting episode lengths
+    # Plot episode lengths
     axes[0, 1].plot(episode_lengths, alpha=0.3, label='Episode Length')
     if len(episode_lengths) >= 100:
         moving_avg = np.convolve(episode_lengths, np.ones(100)/100, mode='valid')
@@ -199,7 +203,7 @@ def plot_training_curves(episode_rewards, episode_lengths, losses):
     axes[0, 1].legend()
     axes[0, 1].grid(True)
     
-    # Plotting losses
+    # Plot losses
     if losses:
         axes[1, 0].plot(losses, alpha=0.3, label='Loss')
         if len(losses) >= 100:
@@ -212,7 +216,7 @@ def plot_training_curves(episode_rewards, episode_lengths, losses):
         axes[1, 0].legend()
         axes[1, 0].grid(True)
     
-    # Plotting success rate over time
+    # Plot success rate over time
     window_size = 50
     success_rates = []
     for i in range(window_size, len(episode_rewards) + 1):
@@ -238,7 +242,7 @@ def test_agent(model_path: str, num_episodes: int = 10, grid_size: int = 15, ren
     
     # Auto-detect file extension
     if not model_path.endswith(('.zip', '.pth')):
-        # Trying ZIP first, then .pth
+        # Try ZIP first, then .pth
         if os.path.exists(model_path + '.zip'):
             model_path = model_path + '.zip'
         elif os.path.exists(model_path + '.pth'):
